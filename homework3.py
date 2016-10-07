@@ -48,6 +48,11 @@ def print_board(board, delim):
             print(str(board[r][c]) + delim, end = '')
         print()
     print()
+    
+def write_board(f, board):
+    size = len(board)    
+    for line in board:
+        f.write(''.join(line) + '\n')
  
 def print_paras():
     global N, MODE, YOUPLAY, DEPTH
@@ -172,42 +177,43 @@ def revert_swallow(board, swallowed, player, opponent):
     
 
 ######################## algos #########################
-def MiniMax(board, player, depth, eval):
+def MiniMax(board, player, depth, eval, abp):
     """
     : return the minimax decision
     """
     global CELL_VALUES, DEPTH, AVAILABLES, OWNED_PIECES
     move_type = 'Stake'
-    move_target = (0, 0) # ok?
+    move_target = (0, 0)
+    print('MINIMAX, pruned: ' + str(abp))
     
+    alpha, beta = float('-inf'), float('inf')
     max_val = float('-inf')
     opponent = get_opponent(player)    
     # stake
     for tile in AVAILABLES:
         change_eval = stake(board, player, tile)
         new_eval = eval + change_eval
-        print(player + " new eval: " + str(new_eval)) ## print        
-        temp = Min_Value(board, opponent, depth + 1, new_eval) # compute 
+#         print(player + " new eval: " + str(new_eval)) ## print        
+        temp = Min_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta) # compute 
         if temp > max_val:
             max_val = temp
             move_target = tile
-        print(player + " min value: " + str(temp)) ## print
+#         print(player + " min value: " + str(temp)) ## print
         # restore the original state
         remove_ownership(board, player, tile)
-        print()
+#         print()
     # raid
     for tile in OWNED_PIECES[player]:
         moves = get_raid_moves(board, tile)
-#         print(player + "'s rading moves" + str(moves)) ## print
         for move in moves:            
             change_eval, swallowed = raid(board, player, tile, move)
             new_eval = eval + change_eval
             raided = (tile[0] + move[0], tile[1] + move[1])
-            temp = Min_Value(board, opponent, depth + 1, new_eval) # compute
+            temp = Min_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta) # compute
             if temp > max_val:
                 max_val = temp
                 move_type = 'Raid'
-                move_target = raided
+                move_target = (tile, move)
 #             print(player + " min value: " + str(temp)) ## print
             # restore the original state
             revert_swallow(board, swallowed, player, opponent)
@@ -215,10 +221,9 @@ def MiniMax(board, player, depth, eval):
         
     return move_target, move_type
        
-def Max_Value(board, player, depth, last_eval):
+def Max_Value(board, player, depth, last_eval, abp, alpha, beta):
     global CELL_VALUES, DEPTH, AVAILABLES, OWNED_PIECES
     
-#     print('Max_Value: depth ' + str(depth) + ' DEPTH: ' + str(DEPTH)) ## print
     if len(AVAILABLES) == 0 or depth == DEPTH: 
         return last_eval # should simply call compute function?
     
@@ -228,22 +233,28 @@ def Max_Value(board, player, depth, last_eval):
     for tile in AVAILABLES:
         change_eval = stake(board, player, tile)
         new_eval = last_eval + change_eval
-        max_val = max(max_val, Min_Value(board, opponent, depth + 1, new_eval)) #
+        max_val = max(max_val, Min_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta)) #
         remove_ownership(board, player, tile)
+        # pruning
+        if abp and max_val >= beta: return max_val
+        alpha = max(alpha, max_val)
     # raid
     for tile in OWNED_PIECES[player]:
         moves = get_raid_moves(board, tile)
         for move in moves:            
             change_eval, swallowed = raid(board, player, tile, move)
             new_eval = last_eval + change_eval
-            max_val = max(max_val, Min_Value(board, opponent, depth + 1, new_eval))
+            max_val = max(max_val, Min_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta))
             revert_swallow(board, swallowed, player, opponent)
             raided = (tile[0] + move[0], tile[1] + move[1])
             remove_ownership(board, player, raided)
+            # pruning
+            if abp and max_val >= beta: return max_val
+            alpha = max(alpha, max_val)
         
     return max_val
     
-def Min_Value(board, player, depth, last_eval):
+def Min_Value(board, player, depth, last_eval, abp, alpha, beta):
     global CELL_VALUES, DEPTH, AVAILABLES, OWNED_PIECES
     
     if len(AVAILABLES) == 0 or depth == DEPTH: 
@@ -255,18 +266,24 @@ def Min_Value(board, player, depth, last_eval):
     for tile in AVAILABLES:
         change_eval = stake(board, player, tile)
         new_eval = last_eval - change_eval
-        min_val = min(min_val, Max_Value(board, opponent, depth + 1, new_eval)) #
+        min_val = min(min_val, Max_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta)) #
         remove_ownership(board, player, tile)
+        # pruning
+        if abp and min_val <= alpha: return min_val
+        beta = min(beta, min_val)
     # raid
     for tile in OWNED_PIECES[player]:
         moves = get_raid_moves(board, tile)
         for move in moves:            
             change_eval, swallowed = raid(board, player, tile, move)
             new_eval = last_eval - change_eval
-            min_val = min(min_val, Max_Value(board, opponent, depth + 1, new_eval))
+            min_val = min(min_val, Max_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta))
             revert_swallow(board, swallowed, player, opponent)
             raided = (tile[0] + move[0], tile[1] + move[1])
             remove_ownership(board, player, raided)
+            # pruning
+            if abp and min_val <= alpha: return min_val
+            beta = min(beta, min_val)
         
     return min_val
     
@@ -289,8 +306,29 @@ print_board(board, '')
 # print(OWNED_PIECES)
 
 eval = compute_eval(board, YOUPLAY)
-print('initial eval: ' + str(eval))
+# print('initial eval: ' + str(eval))
+ABP = False
+if MODE == 'ALPHABETA': ABP = True
+# print('MODE: ' + MODE + ', ' + 'MODE: ' + str(MODE == 'ALPHABETA'))
+# print('ABP ' + str(ABP))
+    
 start_time = time.time()
-type, cell = MiniMax(board, YOUPLAY, 0, eval)
+target, type = MiniMax(board, YOUPLAY, 0, eval, ABP)
 print("Runing time: {0}ms".format(int((time.time() - start_time) * 1000)))
-print(type, cell)
+print(type, target)
+
+
+with open('output.txt', 'w') as f:
+    cell = 0
+    if type is 'Stake': 
+        stake(board, YOUPLAY, target)
+        cell = target        
+    else:
+        cell, move = target[0], target[1]
+        raid(board, YOUPLAY, cell, move)
+        cell = (cell[0] + move[0], cell[1] + move[1])
+    move = '%c%d %s\n' % (cell[1] + 65, cell[0] + 1, type)
+    f.write(move)    
+    write_board(f, board)
+    
+
