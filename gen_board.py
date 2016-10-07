@@ -5,6 +5,7 @@ N = 5
 MODE = 'MINIMAX'
 # YOUPLAY = ''
 MAX_DEPTH = 5
+DEPTH = 3
 CELL_VALUES = []
 BOARD = []
 
@@ -12,19 +13,28 @@ MAX_VAL = 100
 
 
 ######################### randomize paras #########################
-N = random.randrange(26)
 MODE = random.choice(['MINIMAX', 'ALPHABETA']) # and 'COMPETITION'
 YOUPLAY = random.choice(['X', 'O'])
 MAX_DEPTH = int(N * N / 2)
 
 ######################### parsing #########################
 DEBUG = False
+FILE_NAME = ''
 
 parser = argparse.ArgumentParser(description='Randomly generate gang board')
-parser.add_argument('-n', metavar = 'N', type=int, default='5')
+parser.add_argument('-n', metavar = 'N', type=int, default=random.randrange(26))
+parser.add_argument('-m', metavar = 'mode', default = 'MINIMAX', 
+                    choices= ['MINIMAX', 'ALPHABETA'])
+parser.add_argument('-depth', metavar ='depth', type=int, 
+                default=random.randrange(1, MAX_DEPTH + 1))
+parser.add_argument('-f', metavar ='filename', default='input.txt')
+
 parser.add_argument('-d', action='store_true', default=False)
 args = parser.parse_args()
 N = args.n
+MODE = args.m
+DEPTH = args.depth
+FILE_NAME = args.f
 DEBUG = args.d
 # print (DEBUG)
 # quit()
@@ -196,7 +206,7 @@ def print_board():
 ############################## main ##############################
 init()
 
-num_plays = random.randrange(N * N - 1)
+num_plays = random.randrange( int(N * N / 2) )
 print('N: ' + str(N) + '\tnum_ply: ' + str(num_plays) + '\n')
 
 player = 'X'
@@ -211,11 +221,11 @@ while ( num_plays ):
     num_plays -= 1
 
 
-with open('input.txt', 'w') as f:
+with open(FILE_NAME, 'w') as f:
     f.write(str(N) + '\n')
     f.write(MODE + '\n')
     f.write(player + '\n')
-    f.write(str(random.randrange(1, MAX_DEPTH + 1)) + '\n')
+    f.write(str(DEPTH) + '\n')
     
     for row in CELL_VALUES:
         for cell in row:

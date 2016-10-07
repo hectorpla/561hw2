@@ -1,5 +1,5 @@
 # 561 hw2: minimax game playing
-import string
+import time
 
 N = 5
 MODE = ''
@@ -75,7 +75,7 @@ def compute_eval(board, player):
 # stake a position and return the gain
 def stake(board, player, pos):
     global N, CELL_VALUES, AVAILABLES
-    print(player + ' staking ' + str(pos)) ## print
+#     print(player + ' staking ' + str(pos)) ## print
     r, c = pos[0], pos[1]
     assert board[r][c] is '.'
     board[r][c] = player
@@ -85,7 +85,7 @@ def stake(board, player, pos):
     
 def remove_ownership(board, player, pos):
     global N, AVAILABLES, OWNED_PIECES
-    print(player + ' revert stake/raid ' + str(pos)) ## print
+#     print(player + ' revert stake/raid ' + str(pos)) ## print
     r, c = pos[0], pos[1]
     assert board[r][c] != '.'
     board[r][c] = '.'
@@ -123,7 +123,7 @@ def swallow_around(board, player, pos):
     if c < N - 1 and board[r][c+1] == opponent:
         gain += change_ownership(board, player, opponent, r, c+1)
         swallowed.append((r, c+1))
-    print(player + ' swallowed: ' + str(swallowed))
+#     print(player + ' swallowed: ' + str(swallowed))
     return gain, swallowed
 
 # return all the possible raid moves from pos
@@ -147,7 +147,7 @@ def get_raid_moves(board, pos):
 # raid from pos using move, return the gain
 def raid(board, player, pos, move):
     global N, CELL_VALUES
-    print(player + ' raiding from:' + str(pos) + ' move: ' + str(move)) ## print
+#     print(player + ' raiding from:' + str(pos) + ' move: ' + str(move)) ## print
     assert pos in OWNED_PIECES[player]
     r, c = pos[0] + move[0], pos[1] + move[1]
     assert board[r][c] is '.'
@@ -159,7 +159,7 @@ def raid(board, player, pos, move):
     swallow_gain, swallowed = swallow_around(board, player, (r,c))
     return raid_gain + swallow_gain, swallowed
 
-# get the state of 
+# revert a swallow
 def revert_swallow(board, swallowed, player, opponent):
     global OWNED_PIECES
     for s in swallowed:
@@ -168,7 +168,7 @@ def revert_swallow(board, swallowed, player, opponent):
         board[r][c] = opponent
         OWNED_PIECES[player].remove(s)
         OWNED_PIECES[opponent].add(s)
-    print(player + ' revert swallow: ' + str(swallowed)) ## print
+#     print(player + ' revert swallow: ' + str(swallowed)) ## print
     
 
 ######################## algos #########################
@@ -198,7 +198,7 @@ def MiniMax(board, player, depth, eval):
     # raid
     for tile in OWNED_PIECES[player]:
         moves = get_raid_moves(board, tile)
-        print(player + "'s rading moves" + str(moves)) ## print
+#         print(player + "'s rading moves" + str(moves)) ## print
         for move in moves:            
             change_eval, swallowed = raid(board, player, tile, move)
             new_eval = eval + change_eval
@@ -208,10 +208,8 @@ def MiniMax(board, player, depth, eval):
                 max_val = temp
                 move_type = 'Raid'
                 move_target = raided
-            print(player + " min value: " + str(temp)) ## print
+#             print(player + " min value: " + str(temp)) ## print
             # restore the original state
-            # print_board(board, '')
-#             print(swallowed)
             revert_swallow(board, swallowed, player, opponent)
             remove_ownership(board, player, raided)
         
@@ -220,7 +218,7 @@ def MiniMax(board, player, depth, eval):
 def Max_Value(board, player, depth, last_eval):
     global CELL_VALUES, DEPTH, AVAILABLES, OWNED_PIECES
     
-    print('Max_Value: depth ' + str(depth) + ' DEPTH: ' + str(DEPTH))
+#     print('Max_Value: depth ' + str(depth) + ' DEPTH: ' + str(DEPTH)) ## print
     if len(AVAILABLES) == 0 or depth == DEPTH: 
         return last_eval # should simply call compute function?
     
@@ -248,7 +246,6 @@ def Max_Value(board, player, depth, last_eval):
 def Min_Value(board, player, depth, last_eval):
     global CELL_VALUES, DEPTH, AVAILABLES, OWNED_PIECES
     
-    print('Min_Value: depth ' + str(depth) + ' DEPTH: ' + str(DEPTH))
     if len(AVAILABLES) == 0 or depth == DEPTH: 
         return last_eval # should simply call compute function?
     
@@ -287,11 +284,13 @@ board = parse_board(lines[4+N:4+2*N])
 
 print_paras()
 # print_board(CELL_VALUES, ' ')
-# print_board(board, '') 
-print(AVAILABLES) 
-print(OWNED_PIECES)
+print_board(board, '') 
+# print(AVAILABLES) 
+# print(OWNED_PIECES)
 
 eval = compute_eval(board, YOUPLAY)
 print('initial eval: ' + str(eval))
+start_time = time.time()
 type, cell = MiniMax(board, YOUPLAY, 0, eval)
+print("Runing time: {0}ms".format(int((time.time() - start_time) * 1000)))
 print(type, cell)
