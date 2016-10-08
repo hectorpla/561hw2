@@ -1,5 +1,5 @@
 # 561 hw2: minimax game playing
-import time
+import time, copy
 
 N = 5
 MODE = ''
@@ -188,9 +188,13 @@ def MiniMax(board, player, depth, eval, abp):
     
     alpha, beta = float('-inf'), float('inf')
     max_val = float('-inf')
-    opponent = get_opponent(player)    
+    opponent = get_opponent(player)  
+    
+    print(AVAILABLES)
+    avails = copy.copy(AVAILABLES)
+    own_pieces = OWNED_PIECES[player]
     # stake
-    for tile in AVAILABLES:
+    for tile in avails:
         change_eval = stake(board, player, tile)
         new_eval = eval + change_eval
 #         print(player + " new eval: " + str(new_eval)) ## print        
@@ -198,12 +202,12 @@ def MiniMax(board, player, depth, eval, abp):
         if temp > max_val:
             max_val = temp
             move_target = tile
-#         print(player + " min value: " + str(temp)) ## print
+        print(player + " stake " + str(tile) + " min value: " + str(temp)) ## print
         # restore the original state
         remove_ownership(board, player, tile)
 #         print()
     # raid
-    for tile in OWNED_PIECES[player]:
+    for tile in own_pieces:
         moves = get_raid_moves(board, tile)
         for move in moves:            
             change_eval, swallowed = raid(board, player, tile, move)
@@ -214,7 +218,7 @@ def MiniMax(board, player, depth, eval, abp):
                 max_val = temp
                 move_type = 'Raid'
                 move_target = (tile, move)
-#             print(player + " min value: " + str(temp)) ## print
+            print(player + " raid  " + str(raided) + " min value: " + str(temp)) ## print
             # restore the original state
             revert_swallow(board, swallowed, player, opponent)
             remove_ownership(board, player, raided)
@@ -229,8 +233,11 @@ def Max_Value(board, player, depth, last_eval, abp, alpha, beta):
     
     max_val = float('-inf')
     opponent = get_opponent(player)
+    
+    avails = copy.copy(AVAILABLES)
+    own_pieces = OWNED_PIECES[player]
     # stake
-    for tile in AVAILABLES:
+    for tile in avails:
         change_eval = stake(board, player, tile)
         new_eval = last_eval + change_eval
         max_val = max(max_val, Min_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta)) #
@@ -239,7 +246,7 @@ def Max_Value(board, player, depth, last_eval, abp, alpha, beta):
         if abp and max_val >= beta: return max_val
         alpha = max(alpha, max_val)
     # raid
-    for tile in OWNED_PIECES[player]:
+    for tile in own_pieces:
         moves = get_raid_moves(board, tile)
         for move in moves:            
             change_eval, swallowed = raid(board, player, tile, move)
@@ -262,8 +269,11 @@ def Min_Value(board, player, depth, last_eval, abp, alpha, beta):
     
     min_val = float('inf')
     opponent = get_opponent(player)
+    
+    avails = copy.copy(AVAILABLES)
+    own_pieces = OWNED_PIECES[player]
     # stake
-    for tile in AVAILABLES:
+    for tile in avails:
         change_eval = stake(board, player, tile)
         new_eval = last_eval - change_eval
         min_val = min(min_val, Max_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta)) #
@@ -272,7 +282,7 @@ def Min_Value(board, player, depth, last_eval, abp, alpha, beta):
         if abp and min_val <= alpha: return min_val
         beta = min(beta, min_val)
     # raid
-    for tile in OWNED_PIECES[player]:
+    for tile in own_pieces:
         moves = get_raid_moves(board, tile)
         for move in moves:            
             change_eval, swallowed = raid(board, player, tile, move)
