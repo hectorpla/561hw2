@@ -76,6 +76,10 @@ def compute_eval(board, player):
             if board[r][c] is opponent: res -= CELL_VALUES[r][c]
     return res
 
+def sqr_num(cell):
+    global N
+    return cell[0] * N + cell[1]
+
 ######################### game operators #########################
 # stake a position and return the gain
 def stake(board, player, pos):
@@ -184,29 +188,28 @@ def MiniMax(board, player, depth, eval, abp):
     global CELL_VALUES, DEPTH, AVAILABLES, OWNED_PIECES
     move_type = 'Stake'
     move_target = (0, 0)
-    print('MINIMAX, pruned: ' + str(abp))
+#     print('MINIMAX, pruned: ' + str(abp))
     
     alpha, beta = float('-inf'), float('inf')
     max_val = float('-inf')
     opponent = get_opponent(player)  
     
-    print(AVAILABLES)
+#     print(AVAILABLES) ## print
     avails = copy.copy(AVAILABLES)
     own_pieces = OWNED_PIECES[player]
     # stake
     for tile in avails:
         change_eval = stake(board, player, tile)
         new_eval = eval + change_eval
-#         print(player + " new eval: " + str(new_eval)) ## print        
         temp = Min_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta) # compute 
-        if temp > max_val:
+        if temp > max_val or (temp == max_val and sqr_num(tile) < sqr_num(move_target)):
             max_val = temp
             move_target = tile
         print(player + " stake " + str(tile) + " min value: " + str(temp)) ## print
         # restore the original state
         remove_ownership(board, player, tile)
-#         print()
     # raid
+    last_best_move = move_target
     for tile in own_pieces:
         moves = get_raid_moves(board, tile)
         for move in moves:            
@@ -214,10 +217,11 @@ def MiniMax(board, player, depth, eval, abp):
             new_eval = eval + change_eval
             raided = (tile[0] + move[0], tile[1] + move[1])
             temp = Min_Value(board, opponent, depth + 1, new_eval, abp, alpha, beta) # compute
-            if temp > max_val:
+            if temp > max_val or (move_type is 'Raid' and temp == max_val and sqr_num(raided) < sqr_num(last_best_move)):
                 max_val = temp
                 move_type = 'Raid'
                 move_target = (tile, move)
+                last_best_move = raided
             print(player + " raid  " + str(raided) + " min value: " + str(temp)) ## print
             # restore the original state
             revert_swallow(board, swallowed, player, opponent)
@@ -309,9 +313,9 @@ DEPTH = int(lines[3])
 CELL_VALUES = parse_values(lines[4:4+N])
 board = parse_board(lines[4+N:4+2*N])
 
-print_paras()
+# print_paras()
 # print_board(CELL_VALUES, ' ')
-print_board(board, '') 
+# print_board(board, '') 
 # print(AVAILABLES) 
 # print(OWNED_PIECES)
 
@@ -321,12 +325,17 @@ ABP = False
 if MODE == 'ALPHABETA': ABP = True
 # print('MODE: ' + MODE + ', ' + 'MODE: ' + str(MODE == 'ALPHABETA'))
 # print('ABP ' + str(ABP))
+
+import argparse
+parser = argparse.ArgumentParser(description='mode')
+parser.add_argument('-ab', action='store_true', default = False)
+args = parser.parse_args()
+ABP = args.ab
     
 start_time = time.time()
 target, type = MiniMax(board, YOUPLAY, 0, eval, ABP)
 print("Runing time: {0}ms".format(int((time.time() - start_time) * 1000)))
 print(type, target)
-
 
 with open('output.txt', 'w') as f:
     cell = 0
@@ -340,5 +349,4 @@ with open('output.txt', 'w') as f:
     move = '%c%d %s\n' % (cell[1] + 65, cell[0] + 1, type)
     f.write(move)    
     write_board(f, board)
-    
 
